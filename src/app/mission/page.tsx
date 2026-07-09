@@ -14,10 +14,12 @@ type Plan = {
 type Execution = {
   executionId: string;
   status: string;
-  stepResults: { step: number; agentName: string; status: string }[];
+  stepResults: { step: number; agentName: string; status: string; error?: string; output?: unknown }[];
   totalPaid: number;
   totalSteps: number;
   completedSteps: number;
+  finalOutput?: string;
+  anchorTxHash?: string;
 };
 
 type LogEntry = {
@@ -165,9 +167,13 @@ export default function MissionPage() {
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-ivory-muted/50">Wallet</span>
-                <span className="text-cyan font-mono">{balance ? `${parseFloat(balance).toFixed(2)} ETH` : "—"}</span>
+                <span className="text-cyan font-mono">{balance ? `${parseFloat(balance).toFixed(4)} ETH` : "—"}</span>
               </div>
               <p className="text-[10px] font-mono text-ivory-muted/30 truncate">{address.slice(0, 6)}...{address.slice(-4)}</p>
+              <a href="https://www.okx.com/xlayer/bridge" target="_blank"
+                className="block text-[10px] text-cyan/50 hover:text-cyan/80 transition-colors">
+                Bridge to X Layer →
+              </a>
               <button onClick={disconnect} className="text-[10px] text-ivory-muted/30 hover:text-red-400/60 transition-colors">
                 Disconnect
               </button>
@@ -303,7 +309,9 @@ export default function MissionPage() {
                 {execution && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8">
                     <div className="bg-navy-light border border-navy-border rounded-xl p-5" id="receipt">
-                      <p className="text-[11px] tracking-[2px] uppercase text-cyan/70 mb-4">Mission complete</p>
+                      <p className="text-[11px] tracking-[2px] uppercase text-cyan/70 mb-4">
+                        {execution.status === "completed" ? "Mission complete" : execution.status === "partial" ? "Partial completion" : "Failed"}
+                      </p>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-ivory-muted/50">Goal</span>
@@ -311,29 +319,40 @@ export default function MissionPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-ivory-muted/50">Agents used</span>
-                          <span className="text-ivory">{execution.completedSteps}</span>
+                          <span className="text-ivory">{execution.completedSteps}/{execution.totalSteps}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-ivory-muted/50">Total cost</span>
                           <span className="text-cyan font-mono">{execution.totalPaid.toFixed(3)} USDT</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-ivory-muted/50">Verification</span>
-                          <span className="text-cyan">passed</span>
-                        </div>
-                        <div className="flex justify-between">
                           <span className="text-ivory-muted/50">Execution ID</span>
                           <span className="text-ivory-muted/60 font-mono text-xs">{execution.executionId.slice(0, 8)}</span>
                         </div>
                       </div>
+
+                      {execution.finalOutput && (
+                        <div className="mt-4 pt-4 border-t border-navy-border/50">
+                          <p className="text-[11px] tracking-[2px] uppercase text-ivory-muted/40 mb-2">Output</p>
+                          <pre className="text-xs text-ivory-muted/70 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed">
+                            {execution.finalOutput.slice(0, 2000)}
+                          </pre>
+                        </div>
+                      )}
+
                       <div className="mt-4 pt-4 border-t border-navy-border/50 flex gap-3">
-                        <a href={`https://www.okx.com/explorer/xlayer/tx/${execution.executionId}`} target="_blank"
-                          className="text-xs text-cyan/70 hover:text-cyan transition-colors">
-                          View on X Layer →
-                        </a>
-                        <button onClick={() => shareReceipt()} className="text-xs text-cyan/70 hover:text-cyan transition-colors">
-                          Share receipt →
-                        </button>
+                        {execution.anchorTxHash && (
+                          <a href={`https://www.okx.com/explorer/xlayer/tx/${execution.anchorTxHash}`} target="_blank"
+                            className="text-xs text-cyan/70 hover:text-cyan transition-colors">
+                            View on X Layer →
+                          </a>
+                        )}
+                        {execution.finalOutput && (
+                          <button onClick={() => shareOutput(execution, plan?.goal || "")}
+                            className="text-xs text-cyan/70 hover:text-cyan transition-colors">
+                            Share output →
+                          </button>
+                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -371,13 +390,10 @@ export default function MissionPage() {
   );
 }
 
-function shareReceipt() {
-  const el = document.getElementById("receipt");
-  if (!el) return;
-  const text = el.innerText;
-  // Copy to clipboard
+function shareOutput(execution: Execution, goal: string) {
+  const text = `Bind mission: ${goal}\n\n${execution.completedSteps}/${execution.totalSteps} agents · ${execution.totalPaid.toFixed(3)} USDT\n\n${execution.finalOutput ? execution.finalOutput.slice(0, 500) : ""}\n\nMission ${execution.executionId.slice(0, 8)}`;
   navigator.clipboard.writeText(text).then(() => {
-    alert("Receipt copied to clipboard. Share it on X!");
+    alert("Output copied to clipboard.");
   });
 }
 
