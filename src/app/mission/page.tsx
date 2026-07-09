@@ -201,18 +201,26 @@ export default function MissionPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-navy flex">
-      {/* sidebar */}
-      <aside className="w-56 border-r border-navy-border/50 flex flex-col shrink-0">
-        <div className="px-5 py-5 border-b border-navy-border/50">
+    <div className="min-h-[100dvh] bg-navy flex flex-col md:flex-row">
+      {/* sidebar — collapses on mobile */}
+      <aside className="w-full md:w-56 md:border-r border-navy-border/50 flex md:flex-col shrink-0">
+        <div className="flex md:flex-col items-center md:items-stretch justify-between md:justify-start px-4 md:px-5 py-3 md:py-5 border-b md:border-b border-navy-border/50">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan/30 to-amber-400/20 border border-cyan/20 flex items-center justify-center">
               <div className="w-2.5 h-2.5 rounded-full bg-cyan/80" />
             </div>
             <span className="text-sm font-medium text-ivory">Bind</span>
           </div>
+          <div className="flex md:hidden items-center gap-2">
+            {address ? (
+              <span className="text-[10px] font-mono text-cyan/60">{address.slice(0, 6)}</span>
+            ) : null}
+            <button onClick={address ? disconnect : connect} className="text-xs text-cyan/70 hover:text-cyan">
+              {address ? "Disconnect" : "Connect"}
+            </button>
+          </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="hidden md:block flex-1 px-3 py-4 space-y-1">
           <button
             onClick={() => setShowHistory(false)}
             className="w-full text-left px-3 py-2 rounded-lg text-sm bg-cyan/10 text-cyan border border-cyan/20"
@@ -226,7 +234,7 @@ export default function MissionPage() {
             History {history.length > 0 && `(${history.length})`}
           </button>
         </nav>
-        <div className="px-5 py-4 border-t border-navy-border/50">
+        <div className="hidden md:block px-5 py-4 border-t border-navy-border/50">
           {address ? (
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
@@ -253,22 +261,21 @@ export default function MissionPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col">
-        <header className="px-8 py-4 border-b border-navy-border/50 flex items-center justify-between">
-          <h1 className="text-base font-medium text-ivory">{showHistory ? "Mission History" : "New Mission"}</h1>
-          <div className="flex items-center gap-3 text-xs text-ivory-muted/40">
-            {address && <span className="text-cyan/60 font-mono">{address.slice(0, 6)}...</span>}
-            <span className="w-1 h-1 rounded-full bg-ivory-muted/20" />
-            <span>X Layer</span>
+      <main className="flex-1 flex flex-col min-h-0">
+        <header className="px-4 md:px-8 py-3 md:py-4 border-b border-navy-border/50 flex items-center justify-between">
+          <h1 className="text-sm md:text-base font-medium text-ivory">{showHistory ? "Mission History" : "New Mission"}</h1>
+          <div className="flex items-center gap-2 md:gap-3 text-xs text-ivory-muted/40">
+            {address && <span className="hidden md:inline text-cyan/60 font-mono">{address.slice(0, 6)}...</span>}
+            <span className="hidden md:inline">X Layer</span>
           </div>
         </header>
 
         {showHistory ? (
-          <div className="flex-1 px-8 py-6 overflow-y-auto">
+          <div className="flex-1 px-4 md:px-8 py-4 md:py-6 overflow-y-auto">
             {history.length === 0 ? (
               <p className="text-sm text-ivory-muted/30 text-center pt-16">No missions yet.</p>
             ) : (
-              <div className="space-y-2 max-w-lg">
+              <div className="space-y-2 max-w-lg mx-auto md:mx-0">
                 {history.map((m) => (
                   <div key={m.id} className="bg-navy-light border border-navy-border rounded-lg px-4 py-3">
                     <div className="flex items-center justify-between">
@@ -288,8 +295,23 @@ export default function MissionPage() {
             )}
           </div>
         ) : (
-          <div className="flex-1 flex">
-            <div className="flex-1 px-8 py-6 overflow-y-auto">
+          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+            <div className="flex-1 px-4 md:px-8 py-4 md:py-6 overflow-y-auto">
+              {/* mobile wallet strip */}
+              <div className="md:hidden flex items-center justify-between mb-4 px-3 py-2 bg-navy-light border border-navy-border rounded-lg">
+                <div>
+                  <span className="text-xs text-ivory-muted/50">Wallet</span>
+                  {address ? (
+                    <p className="text-xs font-mono text-cyan">{balance ? `${balance} USDT` : "—"}</p>
+                  ) : null}
+                </div>
+                {!address && (
+                  <button onClick={connect} className="text-xs py-1.5 px-3 rounded-lg bg-cyan/10 border border-cyan/20 text-cyan">
+                    {isConnecting ? "..." : "Connect"}
+                  </button>
+                )}
+              </div>
+
               {/* goal input */}
               <div className="bg-navy-light border border-navy-border rounded-xl px-5 py-3.5 transition-colors focus-within:border-cyan/30">
                 <textarea
@@ -432,9 +454,9 @@ export default function MissionPage() {
               </AnimatePresence>
             </div>
 
-            {/* execution log */}
-            <aside className="w-72 border-l border-navy-border/50 flex flex-col">
-              <div className="px-5 py-4 border-b border-navy-border/50">
+            {/* execution log — full width on mobile, sidebar on desktop */}
+            <aside className="w-full md:w-72 md:border-l border-navy-border/50 flex flex-col min-h-[200px] md:min-h-0">
+              <div className="px-4 md:px-5 py-3 md:py-4 border-b border-navy-border/50">
                 <p className="text-[11px] tracking-[2px] uppercase text-ivory-muted/40">Execution log</p>
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
