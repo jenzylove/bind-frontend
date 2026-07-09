@@ -5,19 +5,18 @@ import Home from "@/app/page";
 describe("Bind landing page", () => {
   it("renders the headline", () => {
     render(<Home />);
-    expect(screen.getByText("What are you building?")).toBeInTheDocument();
+    expect(screen.getByText("Hire the marketplace.")).toBeInTheDocument();
   });
 
   it("renders prompt chips", () => {
     render(<Home />);
     expect(screen.getByText("token due diligence")).toBeInTheDocument();
     expect(screen.getByText("market brief")).toBeInTheDocument();
-    expect(screen.getByText("honeypot check")).toBeInTheDocument();
   });
 
   it("renders the generate plan button", () => {
     render(<Home />);
-    expect(screen.getByText("Generate Plan")).toBeInTheDocument();
+    expect(screen.getByText("Generate plan and quote")).toBeInTheDocument();
   });
 
   it("renders the footer", () => {
