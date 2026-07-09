@@ -66,10 +66,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const updateBalance = async (addr: string) => {
     try {
       if (!provider) return;
-      // Get balance in wei, convert to ETH
-      const bal = await provider.request({ method: "eth_getBalance", params: [addr, "latest"] });
-      const eth = parseInt(bal, 16) / 1e18;
-      setBalance(eth.toFixed(4));
+      // Check USDT balance on X Layer via balanceOf call
+      const usdtAddress = "0x779ded0c9e1022225f8e0630b35a9b54be713736";
+      const balanceOfSig = "0x70a08231";
+      const addrPadded = addr.slice(2).toLowerCase().padStart(64, "0");
+      const data = balanceOfSig + addrPadded;
+      const result = await provider.request({
+        method: "eth_call",
+        params: [{ to: usdtAddress, data }, "latest"],
+      });
+      if (result && result !== "0x") {
+        const balanceWei = BigInt(result);
+        const formatted = Number(balanceWei) / 1_000_000;
+        setBalance(formatted.toFixed(2));
+      } else {
+        setBalance("0.00");
+      }
     } catch {
       setBalance(null);
     }

@@ -99,11 +99,75 @@ export default function MissionPage() {
     } catch { addLog("Failed to reach marketplace.", "error"); }
   };
 
-  const handleApprovePayment = () => {
-    setPaymentApproved(true);
-    addLog(`Payment approved: ${plan?.totalPriceUsdt.toFixed(3)} USDT`, "paid");
-    addLog("Starting execution...", "info");
-    handleExecute();
+  const handleApprovePayment = async () => {
+    if (!plan || !address) return;
+    
+    addLog("Requesting payment approval from your wallet...", "info");
+    
+    try {
+      // Check if wallet is on X Layer
+      const chainIdHex = await window.ethereum?.request({ method: "eth_chainId" });
+      const currentChainId = chainIdHex ? parseInt(chainIdHex, 16) : 0;
+      
+      if (currentChainId !== 196) {
+        // Prompt user to switch to X Layer
+        addLog("Please switch your wallet to X Layer (chain ID 196)...", "info");
+        try {
+          await window.ethereum?.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0xc4" }], // 196 in hex
+          });
+        } catch {
+          // Chain not added, prompt to add it
+          await window.ethereum?.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0xc4",
+              chainName: "X Layer",
+              rpcUrls: ["https://xlayerrpc.okx.com"],
+              nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
+              blockExplorerUrls: ["https://www.okx.com/explorer/xlayer"],
+            }],
+          });
+        }
+      }
+
+      // The cost in base units (USDT0 has 6 decimals)
+      const costWei = BigInt(Math.floor(plan.totalPriceUsdt * 1_000_000));
+      const bindWallet = "0xf22700698c503be7dfdeaaacc2e4e41c767c263b";
+      const usdtAddress = "0x779ded0c9e1022225f8e0630b35a9b54be713736";
+
+      // ERC-20 transfer function signature
+      // transfer(address to, uint256 amount)
+      const transferSig = "0xa9059cbb";
+      const toPadded = bindWallet.slice(2).padStart(64, "0");
+      const amountPadded = costWei.toString(16).padStart(64, "0");
+      const data = transferSig + toPadded + amountPadded;
+
+      const txHash = await window.ethereum?.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: address,
+          to: usdtAddress,
+          data: data,
+        }],
+      });
+
+      if (txHash) {
+        addLog(`Payment sent: ${plan.totalPriceUsdt.toFixed(3)} USDT`, "paid");
+        addLog("Transaction submitted. Waiting for confirmation...", "info");
+        // Wait for the transaction to be confirmed
+        await waitForTxReceipt(txHash);
+        addLog("Payment confirmed on X Layer", "success");
+        setPaymentApproved(true);
+        addLog("Starting execution...", "info");
+        handleExecute();
+      } else {
+        addLog("Payment was cancelled in your wallet", "error");
+      }
+    } catch (e: any) {
+      addLog(`Payment failed: ${e.message || "User rejected"}`, "error");
+    }
   };
 
   const handleExecute = async () => {
@@ -167,7 +231,7 @@ export default function MissionPage() {
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-ivory-muted/50">Wallet</span>
-                <span className="text-cyan font-mono">{balance ? `${parseFloat(balance).toFixed(4)} ETH` : "—"}</span>
+                <span className="text-cyan font-mono">{balance ? `${balance} USDT` : "—"}</span>
               </div>
               <p className="text-[10px] font-mono text-ivory-muted/30 truncate">{address.slice(0, 6)}...{address.slice(-4)}</p>
               <a href="https://www.okx.com/xlayer/bridge" target="_blank"
@@ -281,21 +345,29 @@ export default function MissionPage() {
                   {plan.steps.map((step, i) => {
                     const result = execution?.stepResults.find((r) => r.step === step.step);
                     const status = result?.status || "running";
+                    const output = result?.output;
+                    const error = result?.error;
                     return (
                       <div key={i} className={`bg-navy-light border rounded-lg px-4 py-3 transition-all ${
-                        status === "passed" ? "border-cyan/30" : status === "failed" ? "border-red-400/30" : "border-navy-border"
+                        status === "passed" ? "border-cyan/30" : status === "failed" || status === "errored" ? "border-red-400/30" : "border-navy-border"
                       }`}>
                         <div className="flex items-center gap-3">
                           <div className={`w-2 h-2 rounded-full shrink-0 ${
-                            status === "passed" ? "bg-cyan" : status === "failed" ? "bg-red-400" : "bg-amber-400 animate-pulse"
+                            status === "passed" ? "bg-cyan" : status === "errored" ? "bg-red-400" : "bg-amber-400 animate-pulse"
                           }`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-ivory">{step.agent.name}</p>
+                            {status === "passed" && output && (
+                              <pre className="text-xs text-ivory-muted/60 mt-1 font-mono whitespace-pre-wrap leading-relaxed max-h-20 overflow-y-auto">
+                                {JSON.stringify(output, null, 2).slice(0, 200)}
+                              </pre>
+                            )}
+                            {error && (
+                              <p className="text-xs text-red-400/70 mt-1">{error}</p>
+                            )}
                           </div>
-                          <span className={`text-xs ${
-                            status === "passed" ? "text-cyan" : status === "failed" ? "text-red-400" : "text-ivory-muted/30"
-                          }`}>
-                            {status === "passed" ? "✓" : status === "failed" ? "✗" : "●"}
+                          <span className={`text-xs ${status === "passed" ? "text-cyan" : status === "errored" ? "text-red-400" : "text-ivory-muted/30"}`}>
+                            {status === "passed" ? "✓" : status === "errored" ? "✗" : "●"}
                           </span>
                         </div>
                       </div>
@@ -395,6 +467,20 @@ function shareOutput(execution: Execution, goal: string) {
   navigator.clipboard.writeText(text).then(() => {
     alert("Output copied to clipboard.");
   });
+}
+
+async function waitForTxReceipt(txHash: string): Promise<void> {
+  // Poll for transaction receipt up to 30 seconds
+  for (let i = 0; i < 30; i++) {
+    try {
+      const receipt = await window.ethereum?.request({
+        method: "eth_getTransactionReceipt",
+        params: [txHash],
+      });
+      if (receipt && receipt.blockNumber) return;
+    } catch { /* continue polling */ }
+    await sleep(1000);
+  }
 }
 
 function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
