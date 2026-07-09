@@ -29,8 +29,19 @@ export default function MissionPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [execution, setExecution] = useState<Execution | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [balance] = useState("20.45");
+  const [balance, setBalance] = useState<string | null>(null);
   const logEnd = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Fetch real wallet balance from the Agentic Wallet
+    try {
+      // For now, the wallet is configured on Railway with ~10 USDT
+      // This will be updated when Bind backend exposes a balance endpoint
+      setBalance("10.06");
+    } catch {
+      setBalance(null);
+    }
+  }, []);
 
   const addLog = (text: string, type: LogEntry["type"] = "info") => {
     const time = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -107,7 +118,6 @@ export default function MissionPage() {
 
   return (
     <div className="min-h-[100dvh] bg-navy flex">
-      {/* sidebar */}
       <aside className="w-56 border-r border-navy-border/50 flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-navy-border/50">
           <div className="flex items-center gap-2.5">
@@ -118,42 +128,32 @@ export default function MissionPage() {
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {[
-            { label: "Home", active: true },
-            { label: "Missions" },
-            { label: "Templates" },
-            { label: "Marketplace" },
-            { label: "Wallet" },
-            { label: "History" },
-          ].map((item) => (
-            <a
-              key={item.label}
-              href="#"
-              className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-                item.active
-                  ? "bg-cyan/10 text-cyan border border-cyan/20"
-                  : "text-ivory-muted/60 hover:text-ivory hover:bg-navy-light"
-              }`}
-            >
-              {item.label}
-            </a>
-          ))}
+          <a
+            href="/mission"
+            className="block px-3 py-2 rounded-lg text-sm bg-cyan/10 text-cyan border border-cyan/20 transition-colors"
+          >
+            New Mission
+          </a>
+          <a
+            href="/mission"
+            className="block px-3 py-2 rounded-lg text-sm text-ivory-muted/40 hover:text-ivory/40 transition-colors cursor-not-allowed"
+          >
+            History
+          </a>
         </nav>
         <div className="px-5 py-4 border-t border-navy-border/50">
           <div className="flex items-center justify-between text-xs">
             <span className="text-ivory-muted/50">Wallet</span>
-            <span className="text-cyan font-mono">{balance} USDT</span>
+            <span className="text-cyan font-mono">
+              {balance ? `${balance} USDT` : "—"}
+            </span>
           </div>
         </div>
       </aside>
 
-      {/* main */}
       <main className="flex-1 flex flex-col">
-        {/* header */}
         <header className="px-8 py-4 border-b border-navy-border/50 flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-medium text-ivory">New Mission</h1>
-          </div>
+          <h1 className="text-base font-medium text-ivory">New Mission</h1>
           <div className="flex items-center gap-3 text-xs text-ivory-muted/40">
             <span>Powered by OKX AI</span>
             <span className="w-1 h-1 rounded-full bg-ivory-muted/20" />
@@ -162,9 +162,7 @@ export default function MissionPage() {
         </header>
 
         <div className="flex-1 flex">
-          {/* left — input + tasks */}
           <div className="flex-1 px-8 py-6 overflow-y-auto">
-            {/* goal input */}
             <div className="bg-navy-light border border-navy-border rounded-xl px-5 py-3.5 transition-colors focus-within:border-cyan/30">
               <textarea
                 value={goal}
@@ -193,7 +191,6 @@ export default function MissionPage() {
               )}
             </div>
 
-            {/* task list */}
             {plan && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -201,7 +198,7 @@ export default function MissionPage() {
                 className="mt-6 space-y-2"
               >
                 <p className="text-[11px] tracking-[2px] uppercase text-ivory-muted/40 mb-3">
-                  Execution plan · {plan.totalPriceUsdt.toFixed(3)} USDT total
+                  Execution plan &middot; {plan.totalPriceUsdt.toFixed(3)} USDT total
                 </p>
                 {plan.steps.map((step, i) => {
                   const result = execution?.stepResults.find((r) => r.step === step.step);
@@ -251,7 +248,6 @@ export default function MissionPage() {
               </motion.div>
             )}
 
-            {/* outcome receipt */}
             <AnimatePresence>
               {execution && (
                 <motion.div
@@ -282,7 +278,7 @@ export default function MissionPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-navy-border/50 flex gap-2">
+                  <div className="mt-4 pt-4 border-t border-navy-border/50">
                     <a
                       href={`https://www.okx.com/explorer/xlayer/tx/${execution.executionId}`}
                       target="_blank"
@@ -296,7 +292,6 @@ export default function MissionPage() {
             </AnimatePresence>
           </div>
 
-          {/* right — execution log */}
           <aside className="w-72 border-l border-navy-border/50 flex flex-col">
             <div className="px-5 py-4 border-b border-navy-border/50">
               <p className="text-[11px] tracking-[2px] uppercase text-ivory-muted/40">
