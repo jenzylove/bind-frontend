@@ -100,7 +100,15 @@ export default function MissionPage() {
   };
 
   const handleApprovePayment = async () => {
-    if (!plan || !address) return;
+    if (!plan || !address || !balance) return;
+    
+    // Check balance first
+    const cost = plan.totalPriceUsdt;
+    const userBalance = parseFloat(balance);
+    if (userBalance < cost) {
+      addLog(`Insufficient balance: need ${cost.toFixed(3)} USDT, have ${userBalance.toFixed(2)} USDT`, "error");
+      return;
+    }
     
     addLog("Requesting payment approval from your wallet...", "info");
     
@@ -336,27 +344,42 @@ export default function MissionPage() {
               {/* plan + payment approval */}
               {plan && !paymentApproved && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 space-y-2">
-                  <p className="text-[11px] tracking-[2px] uppercase text-ivory-muted/40 mb-3">
-                    Plan &middot; {plan.totalPriceUsdt.toFixed(3)} USDT total
-                  </p>
-                  {plan.steps.map((step, i) => (
-                    <div key={i} className="bg-navy-light border border-navy-border rounded-lg px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-navy-border shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-ivory">{step.agent.name}</p>
-                          <p className="text-xs text-ivory-muted/50 truncate">{step.agent.serviceName}</p>
-                        </div>
-                        <span className="text-xs font-mono text-ivory-muted/60">{step.agent.feeAmount.toFixed(3)} USDT</span>
-                      </div>
+                  <div className="bg-navy-light border border-navy-border rounded-xl p-5">
+                    <p className="text-[11px] tracking-[2px] uppercase text-ivory-muted/40 mb-3">Mission plan</p>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm text-ivory">"{plan.goal.slice(0, 50)}{plan.goal.length > 50 ? "..." : ""}"</p>
+                      <p className="text-2xl font-semibold text-cyan tracking-tight ml-4">
+                        {plan.totalPriceUsdt.toFixed(3)} <span className="text-xs font-normal text-ivory-muted/60">USDT</span>
+                      </p>
                     </div>
-                  ))}
-                  <button
-                    onClick={address ? handleApprovePayment : connect}
-                    className="w-full mt-3 py-2.5 rounded-lg bg-cyan text-navy text-xs font-semibold hover:bg-cyan/90 transition-all active:scale-[0.98]"
-                  >
-                    {address ? `Pay ${plan.totalPriceUsdt.toFixed(3)} USDT & Execute` : "Connect wallet to pay"}
-                  </button>
+                    <p className="text-xs text-ivory-muted/50 mt-2">{plan.steps.length} specialists · flat rate · no per-agent fees</p>
+                  </div>
+
+                  {/* Check balance vs cost */}
+                  {(() => {
+                    const cost = plan.totalPriceUsdt;
+                    const userBalance = balance ? parseFloat(balance) : 0;
+                    if (address && userBalance < cost) {
+                      return (
+                        <div className="bg-red-400/5 border border-red-400/20 rounded-lg px-4 py-3">
+                          <p className="text-xs text-red-400/80">Insufficient balance. You need {cost.toFixed(3)} USDT but have {userBalance.toFixed(2)} USDT.</p>
+                          <a href="https://www.okx.com/xlayer/bridge" target="_blank"
+                            className="text-xs text-cyan/70 hover:text-cyan mt-1 inline-block">
+                            Bridge to X Layer →
+                          </a>
+                        </div>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={address ? handleApprovePayment : connect}
+                        disabled={!address}
+                        className="w-full mt-1 py-3 rounded-xl bg-cyan text-navy text-sm font-semibold hover:bg-cyan/90 transition-all active:scale-[0.98]"
+                      >
+                        {address ? `Pay ${plan.totalPriceUsdt.toFixed(3)} USDT` : "Connect wallet to pay"}
+                      </button>
+                    );
+                  })()}
                 </motion.div>
               )}
 
