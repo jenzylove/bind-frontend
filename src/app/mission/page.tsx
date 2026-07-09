@@ -357,9 +357,9 @@ export default function MissionPage() {
                           }`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-ivory">{step.agent.name}</p>
-                            {status === "passed" && output && (
+                            {status === "passed" && (
                               <pre className="text-xs text-ivory-muted/60 mt-1 font-mono whitespace-pre-wrap leading-relaxed max-h-20 overflow-y-auto">
-                                {JSON.stringify(output, null, 2).slice(0, 200)}
+                                {output ? JSON.stringify(output, null, 2).slice(0, 200) : ""}
                               </pre>
                             )}
                             {error && (
