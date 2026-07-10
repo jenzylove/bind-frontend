@@ -23,3 +23,5 @@ Object.defineProperty(window, "ResizeObserver", {
   configurable: true,
   value: MockResizeObserver,
 });
+
+Element.prototype.scrollIntoView = vi.fn();
